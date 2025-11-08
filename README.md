@@ -21,4 +21,4 @@ rds-perform-tester(Redis Performance Tester) 是一个通过配置驱动的 Redi
 具体使用说明参看 usring-guide.md 文件。
 
 ## 下载地址
-[测试工具"perform-tester-1.1.1"](https://gitee.com/zhangclong1/uh-rds-testing/releases/download/RELEASE-1.1.1/perform-tester-1.1.1.tar.gz)
+["perform-tester-1.1.2.tar.gz"](https://gitee.com/zhangclong1/rds-perform-tester/releases/download/RELEASE-1.1.2/perform-tester-v1.1.2.tar.gz)
