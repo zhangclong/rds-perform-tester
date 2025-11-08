@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 日志存放路径 -->
+	<property name="log.path" value="./logs" />
+
+    <!-- 日志输出格式 -->
+	<property name="log.pattern" value="%d{HH:mm:ss.SSS} %-5level %logger{0} - %msg%n" />
+	<property name="log.pattern-simple" value="%d{HH:mm:ss.SSS} %-5level - %msg%n" />
+
+	<!-- 控制台输出 -->
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+	</appender>
+
+	<!-- 系统日志输出 -->
+	<appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+	    <file>${log.path}/system.log</file>
+        <!-- 循环政策：基于时间创建日志文件 -->
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 日志文件名格式 -->
+			<fileNamePattern>${log.path}/system.%d{yyyy-MM-dd}.log</fileNamePattern>
+			<!-- 日志最大的历史 10天 -->
+			<maxHistory>10</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="state_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${log.path}/statistic.log</file>
+		<!-- 循环政策：基于时间创建日志文件 -->
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- 日志文件名格式 -->
+			<fileNamePattern>${log.path}/statistic.%d{yyyy-MM-dd}.log</fileNamePattern>
+			<!-- 日志最大的历史 10天 -->
+			<maxHistory>10</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern-simple}</pattern>
+		</encoder>
+	</appender>
+
+	<!-- 命令执行日志输出 -->
+	<appender name="commands_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${log.path}/commands.log</file>
+		<!-- 循环政策：基于时间创建日志文件 -->
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- 日志文件名格式 -->
+			<fileNamePattern>${log.path}/commands.%d{yyyy-MM-dd}.log</fileNamePattern>
+			<!-- 日志最大的历史 10天 -->
+			<maxHistory>10</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern-simple}</pattern>
+		</encoder>
+	</appender>
+
+
+
+	<!-- 系统日志输出 -->
+	<appender name="file_error" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${log.path}/error.log</file>
+		<!-- 循环政策：基于时间创建日志文件 -->
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- 日志文件名格式 -->
+			<fileNamePattern>${log.path}/error.%d{yyyy-MM-dd}.log</fileNamePattern>
+			<!-- 日志最大的历史 10天 -->
+			<maxHistory>10</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>ERROR</level>
+		</filter>
+	</appender>
+
+	<logger name="com.uh" level="info" />
+	<logger name="ch.qos.logback" level="warn" />
+
+	<!-- 计划任务日志 -->
+	<logger name="state-info" level="info" additivity="true">
+		<appender-ref ref="state_info"/>
+	</logger>
+
+	<!-- 命令执行日志 -->
+	<logger name="commands" level="info" additivity="false">
+		<appender-ref ref="commands_info"/>
+	</logger>
+
+
+	<!--系统操作日志-->
+    <root level="info">
+        <appender-ref ref="console" />
+		<appender-ref ref="file_info" />
+		<appender-ref ref="file_error" />
+    </root>
+
+
+</configuration>

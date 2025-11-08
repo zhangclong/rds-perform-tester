@@ -1,0 +1,32 @@
+# Compiled class file
+*.class
+
+# Intellij
+*.ipr
+*.iml
+*.iws
+.idea
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# runtime directories and files
+/logs/
+/data/
+/temp/
+/apphome/
+/dependency-reduced-pom.xml
+
+# Mac
+.DS_Store
+
+# others
+*.jar
+*.war
+*.zip
+*.pid
+*.orig
+*.xml.versionsBackup
+*.swp
+

@@ -1,0 +1,49 @@
+tests:
+  - id: "2.HashPerformanceTest"
+    description: "验证Hash数据类型，HSET后验证HSCAN命令是否正常执行，以及执行效率"
+    configs:
+      # 是否禁用本测试
+      disable: false
+      # 指定数据文件名称，必须在配置中的dataFiles中有相应的数据文件配置
+      dataFileName: "hash-data"
+      # 指定连接的名称，必须在配置中的connections中有相应的连接配置
+      connectionName: "localCluster"
+      # 是否在测试前先清空DB
+      flushBefore: true
+      # 是否在测试后清理测试数据，根据key值逐条清理
+      cleanAfter: false
+      # 是否从从节点读取数据, 默认是false
+      readFromSlave: false
+      #测试时同时产生的客户端连接数
+      clientsCount: 20
+      # 每个客户端循环执行的次数, 如果是0表示无限循环；默认值为1
+      loopCount: 1
+      # 每隔1000毫秒打印一次状态信息, 默认是1000
+      stateInterval: 5000
+      # 是否运行时解析命令行中的变量表达式，运行时解析会耗用较少的内存但会影响运行效率增大CPU使用，默认是false
+      runtimeParse: true
+      ############### 测试命令相关配置 ################
+      # 下面执行命令中的每个命令行可使用的属性:
+      #  line：是带参数的命令行，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} 为相应的数据值,  其中 ${VALUE}==${VALUE1}
+      #  returnAssert： 是执行这个命令时，返回值的校验，如果不等于这个值就会认为执行失败。“#{NOT_EMPTY}”表示不为空就校验通过。
+      #  returnType: 指定返回值的类型，默认是STRING类型，可选值有 STRING, LONG
+      #  repeatTimes： 命令重复执行的次数，默认是1次。
+      #  sleep: 执行等待的时长（单位是毫秒）。该属性是排它的，如果配置了sleep属性其他属性将被忽略。
+      # 逐个子项循环执行的命令，如果是String类型相当于子项只有一个，set, zset, list, hash这些类型都是集合内子项的循环。
+      commands: [
+        { line: "HSET '${KEY}' '${VALUE1}' '${VALUE2}'", returnAssert: "#{NOT_EMPTY}", returnType: "LONG" },
+        { line: "HGET '${KEY}' '${VALUE1}'", returnAssert: "${VALUE2}", returnType: "STRING", repeatTimes: 9 }
+      ]
+
+      # 表示按key逐一循环执行，并在commands定义的子项循环前执行。
+      keyBeforeCommands: [
+        { line: "EXISTS '${KEY}'", returnAssert: "0", returnType: "LONG" }
+      ]
+
+      # 表示按key逐一循环执行，并在commands定义的子项循环后执行。
+      keyAfterCommands: [
+        { line: "HLEN '${KEY}'", returnAssert: "10", returnType: "LONG" }
+      ]
+
+
+

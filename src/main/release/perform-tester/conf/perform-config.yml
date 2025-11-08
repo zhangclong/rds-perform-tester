@@ -1,0 +1,86 @@
+# 测试配置文件所在相对路径
+testsBase: "perform"
+# 测试配置文件匹配模式
+testPatterns: ["*Test.yml", "*Test.yaml"]
+connections:
+  localSingle:
+    # 主节点模式（单节点），可以定义多个endpoint, 程序会自动负载均衡每个节点
+    mode: "master"
+    #  地址列表， 格式为：[“IP:端口“, ”IP:端口“, ”IP:端口”]
+    endpoints: [ "127.0.0.1:6312" ]
+    # 超时时间，默认2000毫秒
+    timeout: 5000
+  sentinelWorker:
+    # 主从节点连接模式，可以直接连接哨兵管理的主从节点
+    mode: "master_slave"
+    # 连接密码
+    password: "123456"
+    # 地址列表，格式为：“IP:端口,IP:端口,IP:端口”，其中第一个地址为主节点，后续地址为该主节点的备节点。
+    # 注意：主从节点可以指定分属两个不同集群中的节点，测试程序在指定readFromSlave=true时，自动向主节点写入数据，从节点读取数据。。
+    #      mode="master_slave" 或 mode="cluster" 两种模式支持这种方式的配置。
+    endpoints: ["127.0.0.1:6343,127.0.0.1:6344,127.0.0.1:6345"]
+  sentinel:
+    # 哨兵模式
+    mode: "sentinel"
+    # 哨兵节点的密码
+    sentinelPassword: "12345678"
+    # 服务节点密码
+    password: "123456"
+    # 哨兵监控的主节点名称
+    masterName: "sentinel-worker1"
+    endpoints: ["127.0.0.1:26379", "127.0.0.1:26380"]
+  localCluster:
+    # 表示集群模式
+    mode: "cluster"
+    # 连接密码
+    # password: "123456"
+    # 分片配置，格式为 "起始槽位-结束槽位"，注意数组元素的数量必须等于集群的分片数量。
+    shards: [ "0-5460", "5461-10921", "10922-16383"]
+    # 地址列表，集群模式下元素个数等于分片数，每个元素格式为：“IP:端口,IP:端口,IP:端口”，其中第一个地址为主节点，后续地址为该分片的备节点。
+    # 下面是三主三从的集群配置示例，数组中的元素对应shards配置的分片元素，表示每个分片的主从节点地址。
+    endpoints: ["127.0.0.1:6331,127.0.0.1:6332", "127.0.0.1:6333,127.0.0.1:6334", "127.0.0.1:6335,127.0.0.1:6336"]
+    # 超时时间，默认2000毫秒
+    timeout: 10000
+dataFiles:
+  string-data:
+    # 数据类型, 可选取值 string, set, zset, list, hash
+    dataType: "string"
+    # 测试中产生的数据行数
+    dataCount: 100000
+    # Key 生成的模式，可选：“random”表示随机生成， “sequential”表示按顺序生成
+    keyGenMode: "random"
+    # key的起始索引，只在keyGenMode是sequential时使用
+    keyStartIndex: 0
+    # key的前缀，生成的key都会加上这个前缀。
+    keyPrefix: "s"
+    # key的长度, 用于生成随机字符串的长度(不包括keyPrefix字符串),单位字节。
+    #    0 表示使用默认值，如果是random生成规则会随机生成15-25长度的串；如果是sequential生成规则会直接是序列的数字本身。
+    #    1~5 不允许使用，因为太短会导致冲突。
+    #    >=6 如果是random生成规则会随机生成此长度的字符串；如果是sequential生成规则会在生成的数字前补0以补齐到指定长度。
+    keyGenLength: 15
+    # 集合类数据的子集合数量，如果是string类型，不需要此配置。
+    # subDataCount: 1
+    #value的长度, 用于生成随机字符串,单位字节
+    valueLength: 500
+    # 生成的数据文件, 相对于项目根目录
+    dataFile: "data/perform/string-data.csv"
+  hash-data:
+    # 测试中产生的数据行数
+    dataCount: 100000
+    # Key 生成的模式，可选：“random”表示随机生成， “sequential”表示按顺序生成
+    keyGenMode: "sequential"
+    # key的起始索引，只在keyGenMode是sequential时使用
+    keyStartIndex: 0
+    # key的前缀，生成的key都会加上这个前缀。
+    keyPrefix: "hash:"
+    # key的长度, 用于生成随机字符串的长度(不包括keyPrefix字符串),单位字节。
+    keyGenLength: 8
+    # 集合类数据的子集合数量，如果是string类型，不需要此配置。
+    subDataCount: 10
+    # 数据类型, 可选取值 string, set, zset, list, hash
+    dataType: "hash"
+    #value的最小长度, 用于生成随机字符串,单位字节
+    valueLength: 256
+    # 生成的数据文件, 相对于项目根目录
+    dataFile: "data/perform/hash-data.csv"
+
