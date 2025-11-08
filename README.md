@@ -18,7 +18,7 @@ rds-perform-tester(Redis Performance Tester) 是一个通过配置驱动的 Redi
     - 多种执行控制，可以设置每个执行命令间的等待毫秒数，指定执行命令的重复次数。
 
 ## 使用说明
-具体使用说明参看 usring-guide.md 文件。
+具体使用说明参看 ["usring-guide.md"](https://gitee.com/zhangclong1/rds-perform-tester/blob/master/using-guide.md)
 
 ## 下载地址
 ["perform-tester-1.1.2.tar.gz"](https://gitee.com/zhangclong1/rds-perform-tester/releases/download/RELEASE-1.1.2/perform-tester-v1.1.2.tar.gz)
