@@ -174,7 +174,8 @@ public class PerformanceTestRunner {
         for(int i=0 ; i<shardCount ; i++) {
             Shard shardInfo = shards.get(i);
             int dataSize = shardsData.get(i).size();
-            logger.info("[{}] Shard{}[slot:{}] data size:{}", config.getId(), shardInfo.getIndex(), shardInfo.getSlot(), dataSize);
+            logger.info("[{}] Shard{}[slot:{}-{}] data size:{}", config.getId(), shardInfo.getIndex(),
+                    shardInfo.getBeginSlot(), shardInfo.getEndSlot(), dataSize);
         }
 
         System.out.print(config.getId() + " preparing data for threads[" + config.getClientsCount() + "] ");
@@ -306,11 +307,10 @@ public class PerformanceTestRunner {
             long averageTimes = 0;
 
             long ops = 0; // 当前每秒操作数
-            long lastOps = 0; // 上次(循环)每秒操作数
             int threadsSize = startedThreads.size();
 
             long stateInterval = config.getStateInterval();
-            boolean firstLoop = true;
+            boolean firstAvailbleLoop = true;
             boolean running = true;
             while (running) {
                 long begin = System.currentTimeMillis();
@@ -323,28 +323,32 @@ public class PerformanceTestRunner {
 
                 running = false;
                 int op = 0;
+                int runningThreads = 0;
                 for (int i = 0; i < threadsSize; i++) {
                     PerformanceThread pt = threads.get(i);
                     int oneOp = pt.resetOp();
                     if (oneOp > 0) {
                         op += oneOp;
                         running = true; //只要有一个线程在运行，就继续
+                        runningThreads ++;
                     }
                 }
 
-                if(running) {
+                if(threadsSize == runningThreads && !firstAvailbleLoop) {
                     long duration = (System.currentTimeMillis() - begin);
-                    lastOps = ops;
-                    ops = (long) (op * 1000.0 / duration);
-                    state_logger.info("[{}] -- process {} times in {}ms({}/s)", config.getId(), op, duration, ops);
-
-                    if (firstLoop) {
-                        firstLoop = false;
-                    } else {
+                    if(ops > 0) {
+                        // 只有在所有线程都在运行时，才计算平均值
                         // 去掉第一条，和最后一条记录
-                        averageOpsSum += lastOps;
+                        averageOpsSum += ops;
                         averageTimes++;
                     }
+
+                    ops = (long) (op * 1000.0 / duration);
+                    state_logger.info("[{}] -- process {} times in {}ms({}/s), running threads:{}/{}", config.getId(), op, duration, ops, runningThreads, threadsSize);
+                }
+
+                if (firstAvailbleLoop) {
+                    firstAvailbleLoop = false;
                 }
             }
 
