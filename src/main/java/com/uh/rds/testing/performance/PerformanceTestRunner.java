@@ -310,7 +310,6 @@ public class PerformanceTestRunner {
             int threadsSize = startedThreads.size();
 
             long stateInterval = config.getStateInterval();
-            boolean firstAvailbleLoop = true;
             boolean running = true;
             while (running) {
                 long begin = System.currentTimeMillis();
@@ -334,21 +333,16 @@ public class PerformanceTestRunner {
                     }
                 }
 
-                if(threadsSize == runningThreads && !firstAvailbleLoop) {
+                if(threadsSize == runningThreads) {
                     long duration = (System.currentTimeMillis() - begin);
                     if(ops > 0) {
-                        // 只有在所有线程都在运行时，才计算平均值
-                        // 去掉第一条，和最后一条记录
+                        // 只有在所有线程都在运行时，才计算平均值; 去掉最后一条记录
                         averageOpsSum += ops;
                         averageTimes++;
                     }
 
                     ops = (long) (op * 1000.0 / duration);
                     state_logger.info("[{}] -- process {} times in {}ms({}/s), running threads:{}/{}", config.getId(), op, duration, ops, runningThreads, threadsSize);
-                }
-
-                if (firstAvailbleLoop) {
-                    firstAvailbleLoop = false;
                 }
             }
 
