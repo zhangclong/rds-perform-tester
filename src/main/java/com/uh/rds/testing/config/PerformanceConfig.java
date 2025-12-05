@@ -28,7 +28,10 @@ public class PerformanceConfig {
     private boolean readFromSlave = false;
 
     // 测试时同时产生的客户端连接数
-    private int clientsCount;
+    private int threads = 9;
+
+    // 每个线程对应一个客户端连接数
+    private int threadClients = 1;
 
     // 每个客户端循环执行的次数, 如果是0表示无限循环；默认值为1
     private int loopCount;
@@ -46,7 +49,6 @@ public class PerformanceConfig {
     private List<CommandConfig> keyAfterCommands;
 
     private long stateInterval = 1000; // 状态打印间隔，默认1秒
-
 
     public String getId() {
         return id;
@@ -113,12 +115,12 @@ public class PerformanceConfig {
         this.readFromSlave = readFromSlave;
     }
 
-    public int getClientsCount() {
-        return clientsCount;
+    public int getThreads() {
+        return threads;
     }
 
-    public void setClientsCount(int clientsCount) {
-        this.clientsCount = clientsCount;
+    public void setThreads(int threads) {
+        this.threads = threads;
     }
 
     public String getConnectionName() {
@@ -185,6 +187,14 @@ public class PerformanceConfig {
         this.stateInterval = stateInterval;
     }
 
+    public int getThreadClients() {
+        return threadClients;
+    }
+
+    public void setThreadClients(int threadClients) {
+        this.threadClients = threadClients;
+    }
+
     /**
      * 获取命令的总数量合计
      * @return
@@ -204,12 +214,40 @@ public class PerformanceConfig {
 
     public String getSummary() {
         return String.format("['%s']: desc='%s', " +
-                        "clients=%d, loop=%d, dataFile='%s', connection='%s' commands=%d, keyBefore=%d, keyAfter=%d",
-                id, description, clientsCount, loopCount, dataFileName, connectionName,
+                        "threads=%d, clients=%d, loop=%d, dataFile='%s', connection='%s' commands=%d, keyBefore=%d, keyAfter=%d",
+                id, description, threads, threads * threadClients, loopCount, dataFileName, connectionName,
                 (commands != null) ? commands.size() : 0,
                 (keyBeforeCommands != null) ? keyBeforeCommands.size() : 0,
                 (keyAfterCommands != null) ? keyAfterCommands.size() : 0
                 );
+    }
+
+    public void validate() {
+        if(connection == null) {
+            throw new IllegalArgumentException("PerformanceConfig '" + id + "' connection is null.");
+        }
+        connection.validate();
+
+        if(dataFileConfig == null) {
+            throw new IllegalArgumentException("PerformanceConfig '" + id + "' dataFileConfig is null.");
+        }
+        dataFileConfig.validate();
+
+        if(commands == null || commands.isEmpty()) {
+            throw new IllegalArgumentException("PerformanceConfig '" + id + "' commands is null or empty.");
+        }
+
+        if(threads <= 0) {
+            throw new IllegalArgumentException("PerformanceConfig '" + id + "' threads must be greater than 0.");
+        }
+
+        if(threadClients <= 0) {
+            throw new IllegalArgumentException("PerformanceConfig '" + id + "' threadClients must be greater than 0.");
+        }
+
+        if(loopCount < 0) {
+            throw new IllegalArgumentException("PerformanceConfig '" + id + "' loopCount must be greater than or equal to 0.");
+        }
     }
 
     @Override
@@ -223,7 +261,8 @@ public class PerformanceConfig {
                 ", connection='" + connection + '\'' +'\n' +
                 ", flushBefore=" + flushBefore +'\n' +
                 ", cleanAfter=" + cleanAfter +'\n' +
-                ", clientsCount=" + clientsCount +'\n' +
+                ", threads=" + threads +'\n' +
+                ", threadClients=" + threadClients +'\n' +
                 ", loopCount=" + loopCount +'\n' +
                 ", commands=" + commands +'\n' +
                 ", keyBeforeCommands=" + keyBeforeCommands +'\n' +

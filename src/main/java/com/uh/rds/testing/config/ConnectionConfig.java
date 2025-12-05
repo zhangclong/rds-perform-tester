@@ -164,6 +164,27 @@ public class ConnectionConfig {
         return connection;
     }
 
+    public void validate() {
+        // 验证mode
+        ConnectionMode.from(mode);
+
+        // 验证endpoints
+        if(endpoints == null || endpoints.length == 0) {
+            throw new IllegalArgumentException(toString() + " endpoints must be provided.");
+        }
+
+        // 如果是Cluster模式，验证shards
+        ConnectionMode connectionMode = ConnectionMode.from(mode);
+        if(connectionMode == CLUSTER) {
+            if(shards == null || shards.length == 0) {
+                throw new IllegalArgumentException(toString() + "shards must be provided for cluster mode.");
+            }
+            if(shards.length != endpoints.length) {
+                throw new IllegalArgumentException(toString() + "shards length must match endpoints length for cluster mode.");
+            }
+        }
+    }
+
     @Override
     public String toString() {
         return "ConnectionConfig{" +

@@ -66,6 +66,9 @@ public class PerformanceTestMain {
                 logger.info("Performance test [{} - {}] is disabled, skipped.", config.getId(), config.getDescription());
                 continue;
             }
+            // 验证配置合法性, 不合法则抛出异常
+            config.validate();
+
             System.out.println(config.getSummary());
             PerformanceTestRunner runner = new PerformanceTestRunner(config);
             runner.prepareThreadsData();

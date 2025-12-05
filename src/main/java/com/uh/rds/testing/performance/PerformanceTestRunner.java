@@ -7,6 +7,7 @@ import com.uh.rds.testing.conn.ConnectionMode;
 import com.uh.rds.testing.conn.Endpoint;
 import com.uh.rds.testing.conn.RdsConnectInfo;
 import com.uh.rds.testing.conn.Shard;
+import com.uh.rds.testing.utils.Pxx;
 import com.uh.rds.testing.utils.RdsConnectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +29,6 @@ public class PerformanceTestRunner {
 
     private List<PerformanceThread> threads;
 
-    private PerformanceConfig config;
-
     private RdsConnectInfo testingConnection;
 
     private boolean ready = false;
@@ -41,6 +40,10 @@ public class PerformanceTestRunner {
     private CyclicBarrier startBarrier;
 
     private static final Logger state_logger = LoggerFactory.getLogger("state-info");
+
+    protected PerformanceConfig config;
+
+    protected final Pxx pxx = new Pxx(5000, 9000, 9500, 9900); // 响应时间的P50, P90, P95, P99指标计算器
 
     public PerformanceTestRunner() {}
 
@@ -56,7 +59,7 @@ public class PerformanceTestRunner {
             this.testingConnection = conn;
         }
 
-        this.startBarrier = new CyclicBarrier(config.getClientsCount() + 1);
+        this.startBarrier = new CyclicBarrier(config.getThreads() + 1);
     }
 
     /**
@@ -90,23 +93,22 @@ public class PerformanceTestRunner {
         Map<String, List<String[]>> data = readSubsetData(dataFile);
         logger.info("[{}] total {} rows Data loaded! ", config.getId(), data.size());
 
-        List<Map<String, List<String[]>>> threadsData = splitMapList(data, config.getClientsCount());
+        List<Map<String, List<String[]>>> threadsData = splitMapList(data, config.getThreads());
 
         data.clear();
         System.gc();
-
 
         // 获得连接地址
         List<Endpoint> masters = connection.getMasterEndpoints();
         List<Endpoint> slaves = connection.getSlaveEndpoints();
 
-        System.out.print(config.getId() + " preparing data for threads[" + config.getClientsCount() + "] ");
-        for(int i = 0 ; i < config.getClientsCount() ; i++) {
+        System.out.print(config.getId() + " preparing data for threads[" + config.getThreads() + "] ");
+        for(int i = 0; i < config.getThreads() ; i++) {
             Endpoint endpoint = masters.get(i % masters.size());
             Endpoint slaveEndpoint = slaves.isEmpty() ? null : slaves.get(i % slaves.size());
             Map<String, List<String[]>> threadData = threadsData.get(i);
 
-            PerformanceThread thread = new PerformanceThread(i, endpoint, slaveEndpoint, config, startBarrier);
+            PerformanceThread thread = new PerformanceThread(i, endpoint, slaveEndpoint, this, startBarrier);
 
             buildThread(thread, threadData);
             threads.add(thread);
@@ -123,7 +125,7 @@ public class PerformanceTestRunner {
         int dataCount = data.size();
         logger.info("[{}] total {} rows Data loaded!", config.getId(), dataCount);
 
-        int threadSize = config.getClientsCount();
+        int threadSize = config.getThreads();
         List<Shard> shards = connection.getShards();
         int shardCount = shards.size();
 
@@ -144,7 +146,7 @@ public class PerformanceTestRunner {
             Shard shardInfo = shards.get(shardIdx);
             Endpoint masterJedis = shardInfo.getMaster();
             Endpoint slaveJedis =  shardInfo.getSlaves().isEmpty() ? null : shardInfo.getSlaves().get(i % shardInfo.getSlaves().size());
-            PerformanceThread thread = new PerformanceThread(i, shardIdx, masterJedis, slaveJedis, config, startBarrier);
+            PerformanceThread thread = new PerformanceThread(i, shardIdx, masterJedis, slaveJedis, this, startBarrier);
             threads.add(thread);
             List<PerformanceThread> shardThreads = shardsThreads.get(shardIdx);
             shardThreads.add(thread);
@@ -178,7 +180,7 @@ public class PerformanceTestRunner {
                     shardInfo.getBeginSlot(), shardInfo.getEndSlot(), dataSize);
         }
 
-        System.out.print(config.getId() + " preparing data for threads[" + config.getClientsCount() + "] ");
+        System.out.print(config.getId() + " preparing data for threads[" + config.getThreads() + "] ");
 
         //再对每个分片中的数据平均分配到其下的threads中
         for(int i=0 ; i<shardCount ; i++) {
@@ -346,9 +348,12 @@ public class PerformanceTestRunner {
                 }
             }
 
+            long averageOPS = 0;
+
             // 去掉开头和结果的 OPS 平均值
             if(averageTimes > 0) {
-                state_logger.info("[{}] testing end, Steady-State OPS average {}/s\n", config.getId(), averageOpsSum / averageTimes);
+                averageOPS = averageOpsSum / averageTimes;
+                state_logger.info("[{}] testing end, Steady-State OPS average {}/s\n", config.getId(), averageOPS);
             }
             else {
                 state_logger.info("[{}] testing end, No enough data to calculate Steady-State OPS average.\n", config.getId());
@@ -395,17 +400,32 @@ public class PerformanceTestRunner {
             String readableStartTime = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new Date(minStartTime));
             String readableMaxStartTime = new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new Date(maxStartTime));
 
+            long[] pxxValues = pxx.get();
+            float p50 = (float) pxxValues[0] / 1000;
+            float p90 = (float) pxxValues[1] / 1000;
+            float p95 = (float) pxxValues[2] / 1000;
+            float p99 = (float) pxxValues[3] / 1000;
+            long pCount = pxxValues[4];
+            long pTotalDuration = pxxValues[5];
+            float pAverageRespTime = (float) (pTotalDuration / pCount) / 1000;
+
             // 打印时间统计：
             state_logger.info("[{}] 线程数：{} \n" +
                     "   启动时间：[{} ~ {}] \n" +
                     "   持续时间：[{}ms ~ {}ms] \n" +
-                    "   操作次数(每线程 | 总数)：[{} | {}}；\n" +
-                    "   断言失败次数(每线程 | 总数)：[{} | {}]",
+                    "   操作次数(每线程 | 总数)：[{} | {}] \n" +
+                    "   断言失败次数(每线程 | 总数)：[{} | {}] \n" +
+                    "   平均每秒操作数：{} op/s \n" +
+                    "   响应时间(单位毫秒)：[AVG:{}, P50:{}, P90:{}, P95:{}, P99:{}]"
+                    ,
                     config.getId(), threadsSize,
                     readableStartTime, readableMaxStartTime,
                     minDuration, maxDuration,
                     totalOp/threadsSize, totalOp,
-                    totalAssertFailed/threadsSize, totalAssertFailed);
+                    totalAssertFailed/threadsSize, totalAssertFailed,
+                    averageOPS,
+                    pAverageRespTime, p50, p90, p95, p99
+                    );
         });
 
         stateThread.start();

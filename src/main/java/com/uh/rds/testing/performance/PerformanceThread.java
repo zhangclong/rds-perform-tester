@@ -4,11 +4,11 @@ import com.uh.rds.testing.config.CommandConfig;
 import com.uh.rds.testing.config.PerformanceConfig;
 import com.uh.rds.testing.conn.Endpoint;
 import com.uh.rds.testing.logger.TestLoggerFactory;
+import com.uh.rds.testing.utils.Pxx;
 import com.uh.rds.testing.utils.RdsConnectionUtils;
 import org.slf4j.Logger;
 import redis.clients.jedis.BuilderFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisCluster;
 
 import java.util.*;
 import java.util.concurrent.CyclicBarrier;
@@ -20,7 +20,8 @@ public class PerformanceThread implements Runnable {
     private Logger logger;
     private Logger commandLogger;
 
-    private PerformanceConfig config;
+    private final PerformanceConfig config;
+    private final Pxx pxx;
     private Endpoint endpoint; //做操作时的连接地址
     private Endpoint slaveEndpoint;//做验证时的连接地址
     private List<CommandTarget> commandTargets;
@@ -39,11 +40,19 @@ public class PerformanceThread implements Runnable {
     private long time = 0;                                      //总耗时，单位毫秒
     private int assertFailed = 0;                               //断言失败次数
 
-    public PerformanceThread(int index, Endpoint endpoint, Endpoint slaveEndpoint, PerformanceConfig config, CyclicBarrier startBarrier) {
-        this(index, -1, endpoint, slaveEndpoint, config, startBarrier);
+    private int jedisIndex = 0;
+
+    private final Jedis[] writeJedisArray;
+    private final Jedis[] readJedisArray;
+
+    public PerformanceThread(int index, Endpoint endpoint, Endpoint slaveEndpoint, PerformanceTestRunner runner, CyclicBarrier startBarrier) {
+        this(index, -1, endpoint, slaveEndpoint, runner, startBarrier);
     }
 
-    public PerformanceThread(int index, int shard, Endpoint endpoint, Endpoint slaveEndpoint, PerformanceConfig config, CyclicBarrier startBarrier) {
+    public PerformanceThread(int index, int shard, Endpoint endpoint, Endpoint slaveEndpoint, PerformanceTestRunner runner, CyclicBarrier startBarrier) {
+        this.config = runner.config;
+        this.pxx = runner.pxx;
+
         if(shard >= 0) {
             this.name = "[" + config.getId() + ", Shard" + shard + ", Thread" + index + "]";
         }
@@ -53,11 +62,11 @@ public class PerformanceThread implements Runnable {
 
         this.logger = TestLoggerFactory.getLogger(name);
         this.commandLogger = TestLoggerFactory.getLogger("commands." + name, 100);
-
         this.endpoint = endpoint;
         this.slaveEndpoint = slaveEndpoint;
-        this.config = config;
         this.startBarrier = startBarrier;
+        this.writeJedisArray = new Jedis[config.getThreadClients()];
+        this.readJedisArray = new Jedis[config.getThreadClients()];
     }
 
     public void initData(Map<String, List<String[]>> threadData) {
@@ -113,20 +122,22 @@ public class PerformanceThread implements Runnable {
 
     @Override
     public void run() {
-        Jedis writeJedis = null;
-        Jedis readJedis = null;
+        //Jedis writeJedis = null;
+        //Jedis readJedis = null;
         long endTime = 0;
         startTime = 0;
         try {
             // 建立连接
-            writeJedis = endpoint.newJedis();
-            if (config.isReadFromSlave()) {
-                if (slaveEndpoint == null) {
-                    throw new RuntimeException("Slave endpoint is null!");
+            for(int i=0; i<config.getThreadClients(); i++) {
+                writeJedisArray[i] = endpoint.newJedis();
+                if (config.isReadFromSlave()) {
+                    if (slaveEndpoint == null) {
+                        throw new RuntimeException("Slave endpoint is null!");
+                    }
+                    readJedisArray[i] = slaveEndpoint.newJedis();
+                } else {
+                    readJedisArray[i] = writeJedisArray[i];
                 }
-                readJedis = slaveEndpoint.newJedis();
-            } else {
-                readJedis = writeJedis;
             }
 
             // 等待所有线程准备就绪
@@ -150,21 +161,21 @@ public class PerformanceThread implements Runnable {
                         if (beforeCommands != null) {
                             for (CommandConfig commandConfig : beforeCommands) {
                                 CommandTarget target = commandHelper.toCommandTarget(commandConfig, key, null);
-                                runCommand(writeJedis, readJedis, target);
+                                runCommand(target);
                             }
                         }
 
                         for (String[] values : valuesList) {
                             for (CommandConfig commandConfig : commandConfigs) {
                                 CommandTarget target = commandHelper.toCommandTarget(commandConfig, key, values);
-                                runCommand(writeJedis, readJedis, target);
+                                runCommand(target);
                             }
                         }
 
                         if (afterCommands != null) {
                             for (CommandConfig commandConfig : afterCommands) {
                                 CommandTarget target = commandHelper.toCommandTarget(commandConfig, key, null);
-                                runCommand(writeJedis, readJedis, target);//commandTargets.add(target);
+                                runCommand(target);
                             }
                         }
                     }
@@ -173,7 +184,7 @@ public class PerformanceThread implements Runnable {
                 }
                 else {
                     for (CommandTarget target : commandTargets) {
-                        runCommand(writeJedis, readJedis, target);
+                        runCommand(target);
                     }
                 }
             }
@@ -191,7 +202,7 @@ public class PerformanceThread implements Runnable {
             if(config.isCleanAfter()) {
                 for(String key : keys) {
                     try {
-                        writeJedis.del(key);
+                        getNextJedis(true).del(key);
                     }
                     catch (Exception e) {
                         // 发生异常后，不再继续删除其它Key
@@ -201,17 +212,37 @@ public class PerformanceThread implements Runnable {
                 }
             }
 
-            if(writeJedis != null && writeJedis.isConnected()) {
-                writeJedis.close();
-            }
-            if(readJedis != null && readJedis.isConnected()) {
-                readJedis.close();
+            // 关闭所有连接
+            for(int i=0; i<config.getThreadClients(); i++) {
+                if(writeJedisArray[i] != null && writeJedisArray[i].isConnected()) {
+                    try {
+                        writeJedisArray[i].close();
+                    }
+                    catch (Throwable e) {
+                        logger.warn("Close writeJedis error!", e);
+                    }
+                }
+                if(readJedisArray[i] != null && readJedisArray[i] != writeJedisArray[i] && readJedisArray[i].isConnected()) {
+                    try {
+                        readJedisArray[i].close();
+                    }
+                    catch (Throwable e) {
+                        logger.warn("Close readJedis error!", e);
+                    }
+                }
             }
         }
     }
 
+    private Jedis getNextJedis(boolean isWrite) {
+        Jedis[] jedisArray = isWrite ? writeJedisArray : readJedisArray;
+        Jedis jedis = jedisArray[jedisIndex];
+        jedisIndex = (jedisIndex + 1) % jedisArray.length;
+        return jedis;
+    }
 
-    private void runCommand(Jedis writeJedis, Jedis readJedis, CommandTarget target) {
+
+    private void runCommand(CommandTarget target) {
         if(target.sleepMillis > 0) {
             try {
                 Thread.sleep(target.sleepMillis);
@@ -220,10 +251,13 @@ public class PerformanceThread implements Runnable {
             }
         }
         else {
-            Jedis execJedis = (target.isWrite) ? writeJedis : readJedis;
+            Jedis execJedis = getNextJedis(target.isWrite);
             for (int j = 0; j < target.repeatTimes; j++) {
 
+                long before = System.nanoTime();
                 Object returnObj = RdsConnectionUtils.sendCommand(execJedis, target.commandArgs);
+                long duration = (System.nanoTime() - before) / 1000; //微秒
+                pxx.set(duration);
 
                 if(target.compareMethod == CommandHelper.COMPARE_NOT_EMPTY) {
                     if(returnObj == null) {

@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public class DataFileConfig {
 
-    // 数据类型, 可选取值 string, set, zset, list, hash
+    // 数据类型, 可选取值 string, set, zset, list, hash, stream
     private String dataType;
 
     //  测试中产生的数据行数
@@ -109,6 +109,33 @@ public class DataFileConfig {
 
     public void setKeyGenLength(int keyGenLength) {
         this.keyGenLength = keyGenLength;
+    }
+
+    public void validate() throws IllegalArgumentException {
+        if(dataType == null || dataType.isEmpty()) {
+            throw new IllegalArgumentException(toString() + "DataFileConfig dataType is null or empty!");
+        }
+        if(dataCount <= 0) {
+            throw new IllegalArgumentException(toString() + "DataFileConfig dataCount must be greater than 0!");
+        }
+        if(valueLength < 0) {
+            throw new IllegalArgumentException(toString() + "DataFileConfig valueLength must be non-negative!");
+        }
+        if(!keyGenMode.equals("random") && !keyGenMode.equals("sequential")) {
+            throw new IllegalArgumentException(toString() + "DataFileConfig keyGenMode must be 'random' or 'sequential'!");
+        }
+        if(keyGenMode.equals("sequential") && keyStartIndex < 0) {
+            throw new IllegalArgumentException("DataFileConfig keyStartIndex must be non-negative when keyGenMode is 'sequential'!");
+        }
+        if(keyGenLength < 0) {
+            throw new IllegalArgumentException("DataFileConfig keyGenLength must be non-negative!");
+        }
+        if((dataType.equals("set") || dataType.equals("zset") || dataType.equals("list") || dataType.equals("hash") || dataType.equals("stream")) && subDataCount <= 0) {
+            throw new IllegalArgumentException("DataFileConfig subDataCount must be greater than 0 for collection data types!");
+        }
+        if(dataFile == null || dataFile.isEmpty()) {
+            throw new IllegalArgumentException("DataFileConfig dataFile is null or empty!");
+        }
     }
 
     @Override

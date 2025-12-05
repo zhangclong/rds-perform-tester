@@ -72,7 +72,7 @@ connections:
 ```yaml
 dataFiles:
   string-data:
-    # 数据类型, 可选取值 string, set, zset, list, hash
+    # 数据类型, 可选取值 string, set, zset, list, hash, stream
     dataType: "string"
     # 测试中产生的数据行数
     dataCount: 18000000
@@ -113,8 +113,10 @@ tests:
       cleanAfter: false
       # 是否从从节点读取数据, 默认是false
       readFromSlave: false
-      #测试时同时产生的客户端连接数
-      clientsCount: 10
+      # 测试时同时产生的并发线程数
+      threads: 20
+      #每个线程中的客户端数
+      threadClients: 50
       # 每个客户端循环执行的次数, 如果是0表示无限循环；默认值为1
       loopCount: 5
       # 每隔1000毫秒打印一次状态信息, 默认是1000
