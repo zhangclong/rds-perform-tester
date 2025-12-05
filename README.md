@@ -17,8 +17,27 @@ rds-perform-tester(Redis Performance Tester) 是一个通过配置驱动的 Redi
     - 可进行不同指令的读写比例调整，如：SET/GET 读写比例为1:1，SET/GET 读写比例为1:9等。
     - 多种执行控制，可以设置每个执行命令间的等待毫秒数，指定执行命令的重复次数。
 
+## 快速开始
+1. 下载并解压工具包。
+2. 调整连接配置，修改 conf 目录下的 perform-config.yml 文件，这里假设你部署了单节点 Redis 服务，地址配置在：
+   connections.localSingle.endpoints: [ "127.0.0.1:6379" ]  # 修改为你的 Redis 服务地址。
+3. 简单说明一下配置各元素的关系和作用：
+   - perform-config.yml 配置文件中包含两个主要部分：
+      - connections：定义了多个连接配置，可以配置单节点、主从、哨兵、集群等多种模式的 Redis/RDS 服务连接。connections下的元素名称可以自定义，如文件示例中还包含的 localSingle、localMasterSlave、localSentinel、localCluster 等连接配置项。
+      - dataFiles: 定义了多个数据文件配置，每个数据文件配置指定了数据文件路径、数据类型、数据量等信息。dataFiles下的元素名称可以自定义，如文件示例中还包含的 string-data、hash-data 等数据文件配置。
+   - tests目录下的 *.yml 文件定义了多个测试用例，一般yml文件对应一个测试用例，每个测试用例指定了要使用的连接配置、数据文件配置、执行命令、读写比例等信息。
+      - 示例中的 tests/StringPerformTest.yml 文件定义了一个字符串类型的性能测试用例，使用了 localSingle 连接配置和 string-data 数据文件配置，执行 SET 和 GET 命令，读写比例为 1:9
+      - 示例中的 tests/HashPerformTest.yml 文件定义了一个哈希类型的性能测试用例，使用了 localSingle 连接配置和 hash-data 数据文件配置，执行 HSET 和 HGET 命令，读写比例为 1:9
+4. 整个测试工具是配置驱动的，用户只需要根据自己的需求修改配置文件后，执行 bin/runtest.sh（runtest.bat for Windows） 脚本即可开始测试。
+   - 执行顺序是根据 tests 目录下的 yml 中个 tests.id 文本的字母顺序来逐一执行测试用例。示例中会先执行 "1.StringPerformanceTest"、再执行 "2.HashPerformanceTest"。
+   - 运行每个测试用例的顺序是：
+      - 加载连接配置，建立与 Redis/RDS 服务的连接池。
+      - 加载数据文件，准备好测试数据；会检查数据文件是否存在，若不存在会自动生成数据文件。
+      - 执行测试命令，根据配置的进行命令执行和数据验证。
+   - 运行结果会输出到控制台，并生成日志文件在 logs/ 目录下。
+   
 ## 使用说明
-具体使用说明参看 ["usring-guide.md"](https://gitee.com/zhangclong1/rds-perform-tester/blob/master/using-guide.md)
+详细使用说明参看 ["usring-guide.md"](https://gitee.com/zhangclong1/rds-perform-tester/blob/master/using-guide.md)
 
 ## 下载地址
 ["perform-tester-1.1.2.tar.gz"](https://gitee.com/zhangclong1/rds-perform-tester/releases/download/RELEASE-1.1.2/perform-tester-v1.1.2.tar.gz)

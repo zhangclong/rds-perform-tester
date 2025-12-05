@@ -7,15 +7,17 @@ tests:
       # 指定数据文件名称，必须在配置中的dataFiles中有相应的数据文件配置
       dataFileName: "hash-data"
       # 指定连接的名称，必须在配置中的connections中有相应的连接配置
-      connectionName: "localCluster"
+      connectionName: "localSingle"
       # 是否在测试前先清空DB
       flushBefore: true
       # 是否在测试后清理测试数据，根据key值逐条清理
       cleanAfter: false
       # 是否从从节点读取数据, 默认是false
       readFromSlave: false
-      #测试时同时产生的客户端连接数
-      clientsCount: 20
+      # 测试时同时产生的并发线程数
+      threads: 20
+      #每个线程中的客户端数
+      threadClients: 10
       # 每个客户端循环执行的次数, 如果是0表示无限循环；默认值为1
       loopCount: 1
       # 每隔1000毫秒打印一次状态信息, 默认是1000

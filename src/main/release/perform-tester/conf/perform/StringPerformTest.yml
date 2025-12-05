@@ -14,10 +14,12 @@ tests:
       cleanAfter: false
       # 是否从从节点读取数据, 默认是false
       readFromSlave: false
-      #测试时同时产生的客户端连接数
-      clientsCount: 20
+      # 测试时同时产生的并发线程数
+      threads: 20
+      #每个线程中的客户端数
+      threadClients: 10
       # 每个客户端循环执行的次数, 如果是0表示无限循环；默认值为1
-      loopCount: 5
+      loopCount: 10
       # 每隔1000毫秒打印一次状态信息, 默认是1000
       stateInterval: 5000
       # 是否运行时解析命令行中的变量表达式，运行时解析会耗用较少的内存但会影响运行效率增大CPU使用，默认是false
@@ -32,7 +34,7 @@ tests:
       commands: [
         {line: "SET ${KEY} ${VALUE}", returnAssert: "OK", returnType: "STRING"},
         # {sleep: 100},  # 执行等待，单位是毫秒
-        {line: "GET ${KEY}", returnAssert: "${VALUE}", returnType: "STRING", repeatTimes: 3}
+        {line: "GET ${KEY}", returnAssert: "${VALUE}", returnType: "STRING", repeatTimes: 9}
         # {line: "GET ${KEY}", repeatTimes: 3}
       ]
 

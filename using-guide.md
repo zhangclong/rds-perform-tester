@@ -26,7 +26,7 @@ rds-perform-tester(Redis Performance Tester) 是一个通过配置驱动的 Redi
 ### 目录结构说明
 ```declarative
     conf                             # 配置文件目录
-    ├── perform                      # 性能测试各测试用例的配置文件
+    ├── tests                      # 性能测试各测试用例的配置文件
         ├── HashPerformTest.yml      # Hash类型数据的测试用例配置文件
         └── StringPerformTest.yml    # String类型数据的测试用例配置文件
     └── perform-config.yml           # 主配置文件
