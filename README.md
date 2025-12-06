@@ -1,7 +1,7 @@
 # rds-perform-tester性能测试工具 # 
 
 ## 简介
-rds-perform-tester(Redis Performance Tester) 是一个通过配置驱动的 Redis/RDS 高并发性能测试工具。采用 Java 语言编写，基于 [Jedis] (5.x.x) 实现。
+Redis Performance Tester是一个通过配置驱动的 Redis/RDS 高并发性能测试工具。采用 Java 语言编写，基于 [Jedis] (5.x.x) 实现。
 采用高并发多线程方式模拟客户端对 Redis/RDS 进行读写操作，支持单机、主从、哨兵、集群等多种部署模式。
 
 ## 特点和优势
@@ -18,24 +18,52 @@ rds-perform-tester(Redis Performance Tester) 是一个通过配置驱动的 Redi
     - 多种执行控制，可以设置每个执行命令间的等待毫秒数，指定执行命令的重复次数。
 
 ## 快速开始
-1. 下载并解压工具包。
-2. 调整连接配置，修改 conf 目录下的 perform-config.yml 文件，这里假设你部署了单节点 Redis 服务，地址配置在：
-   connections.localSingle.endpoints: [ "127.0.0.1:6379" ]  # 修改为你的 Redis 服务地址。
-3. 简单说明一下配置各元素的关系和作用：
+1. 通过下面的下载地址下载工具包 perform-tester-1.x.x.tar.gz，并解压到本地目录, 这里假设解压后的目录名为 perform-tester/ 
+2. 运行环境必须安装 Java JRE 11 及以上版本，并配置好 JAVA_HOME 环境变量。
+3. 调整连接配置，修改 `perform-config.yml` 配置文件，这里假设你部署了单节点 Redis 服务，地址配置在：
+
+    ```yaml
+    # 在此填入你的连接配置，例如将下面的 endpoints 修改为你的 Redis 地址和端口
+    connections:
+      localSingle:
+        mode: "master"
+        endpoints: [ "your.redis.host:6379" ]  # 修改为你的 Redis 服务地址。
+    ```
+4. 简单说明一下配置各元素的关系和作用：
    - perform-config.yml 配置文件中包含两个主要部分：
       - connections：定义了多个连接配置，可以配置单节点、主从、哨兵、集群等多种模式的 Redis/RDS 服务连接。connections下的元素名称可以自定义，如文件示例中还包含的 localSingle、localMasterSlave、localSentinel、localCluster 等连接配置项。
       - dataFiles: 定义了多个数据文件配置，每个数据文件配置指定了数据文件路径、数据类型、数据量等信息。dataFiles下的元素名称可以自定义，如文件示例中还包含的 string-data、hash-data 等数据文件配置。
    - tests目录下的 *.yml 文件定义了多个测试用例，一般yml文件对应一个测试用例，每个测试用例指定了要使用的连接配置、数据文件配置、执行命令、读写比例等信息。
       - 示例中的 tests/StringPerformTest.yml 文件定义了一个字符串类型的性能测试用例，使用了 localSingle 连接配置和 string-data 数据文件配置，执行 SET 和 GET 命令，读写比例为 1:9
       - 示例中的 tests/HashPerformTest.yml 文件定义了一个哈希类型的性能测试用例，使用了 localSingle 连接配置和 hash-data 数据文件配置，执行 HSET 和 HGET 命令，读写比例为 1:9
-4. 整个测试工具是配置驱动的，用户只需要根据自己的需求修改配置文件后，执行 bin/runtest.sh（runtest.bat for Windows） 脚本即可开始测试。
+5. 整个测试工具是配置驱动的，用户只需要根据自己的需求修改配置文件后，执行 perform-tester/runtest.sh（runtest.bat for Windows） 脚本即可开始测试。
    - 执行顺序是根据 tests 目录下的 yml 中个 tests.id 文本的字母顺序来逐一执行测试用例。示例中会先执行 "1.StringPerformanceTest"、再执行 "2.HashPerformanceTest"。
    - 运行每个测试用例的顺序是：
       - 加载连接配置，建立与 Redis/RDS 服务的连接池。
       - 加载数据文件，准备好测试数据；会检查数据文件是否存在，若不存在会自动生成数据文件。
       - 执行测试命令，根据配置的进行命令执行和数据验证。
-   - 运行结果会输出到控制台，并生成日志文件在 logs/ 目录下。
+   - 运行结果会输出到控制台，并生成日志文件在 logs/ 目录下；运行结果示例：
    
+   ```bash
+   bash-3.2$ ./runtest.sh 
+   APP_HOME: /opt/perform-tester
+   08:38:16.242 INFO  PerformanceTestMain - PerformanceMainTest init ...
+   ......
+   ....
+   ...
+   08:39:13.227 INFO  state-info - [1.StringPerformanceTest] -- process 841650 times in 5005ms(168161/s), running threads:20/20
+   08:39:18.231 INFO  state-info - [1.StringPerformanceTest] -- process 751054 times in 5004ms(150090/s), running threads:20/20
+   08:39:23.237 INFO  state-info - [1.StringPerformanceTest] testing end, Steady-State OPS average 167997/s
+   08:39:23.239 INFO  state-info - [1.StringPerformanceTest] 线程数：20
+   启动时间：[08:38:18.170 ~ 08:38:18.181]
+   持续时间：[59503ms ~ 59554ms]
+   操作次数(每线程 | 总数)：[500000 | 10000000]
+   断言失败次数(每线程 | 总数)：[0 | 0]
+   平均每秒操作数：167997 op/s
+   响应时间(单位毫秒)：[AVG:0.118, P50:0.121, P90:0.162, P95:0.168, P99:0.217]
+   ```
+   
+   输出结果中包含了每个测试用例的详细统计信息，包括线程数、操作次数、断言失败次数、平均每秒操作数和响应时间等指标，在开始执行测试操作后，每隔5秒会输出一次当前的操作速率，测试结束后会输出最终的统计结果。
 ## 使用说明
 详细使用说明参看 ["usring-guide.md"](https://gitee.com/zhangclong1/rds-perform-tester/blob/master/using-guide.md)
 
