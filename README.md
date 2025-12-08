@@ -1,4 +1,4 @@
-# rds-perform-tester性能测试工具 # 
+# Redis Performance Tester性能测试工具 # 
 
 ## 简介
 Redis Performance Tester是一个通过配置驱动的 Redis/RDS 高并发性能测试工具。采用 Java 语言编写，基于 [Jedis] (5.x.x) 实现。
