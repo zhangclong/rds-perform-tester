@@ -166,7 +166,7 @@
                 <goals><goal>run</goal></goals>
                 <configuration>
                     <target>
-                        <echo>[==== Copy probehome resources and jar ====] </echo>
+                        <echo>[==== Copy apphome resources====] </echo>
                         <copy verbose="true" overwrite="true" todir="${apphome.dir}">
                             <fileset dir="${project.basedir}/src/main/release/perform-tester" />
                         </copy>
