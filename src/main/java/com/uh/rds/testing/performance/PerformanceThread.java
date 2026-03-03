@@ -265,9 +265,29 @@ public class PerformanceThread implements Runnable {
                         commandLogger.error("Command:{}, return null, not match NOT_EMPTY", toCommandLine(target.commandArgs));
                     }
                 }
+                else if(target.compareMethod == CommandHelper.COMPARE_EMPTY) {
+                    if(target.returnType == CommandHelper.RETURN_TYPE_STRING) {
+                        String returnValue = getReturnValueAsString(returnObj);
+                        if(returnValue != null && !returnValue.isEmpty()) {
+                            assertFailed ++;
+                            commandLogger.error("Command:{}, return '{}', not match EMPTY", toCommandLine(target.commandArgs), returnValue);
+                        }
+                    }
+                    else if(target.returnType == CommandHelper.RETURN_TYPE_LONG) {
+                        Long returnValue = BuilderFactory.LONG.build(returnObj);
+                        if(returnValue != null && returnValue != 0L) {
+                            assertFailed ++;
+                            commandLogger.error("Command:{}, return {}, not match EMPTY", toCommandLine(target.commandArgs), returnValue);
+                        }
+                    }
+                    else {
+                        assertFailed ++;
+                        commandLogger.error("Command:{}, Unknown return type: {}", toCommandLine(target.commandArgs), target.returnType);
+                    }
+                }
                 else if(target.compareMethod == CommandHelper.COMPARE_EQ) {
                     if(target.returnType == CommandHelper.RETURN_TYPE_STRING) {
-                        String returnValue = BuilderFactory.STRING.build(returnObj);
+                        String returnValue = getReturnValueAsString(returnObj);
                         if(!target.compareValue.equals(returnValue)) {
                             assertFailed ++;
                             commandLogger.error("Command:{}, return '{}', not match EQ '{}'", toCommandLine(target.commandArgs), returnValue, target.compareValue);
@@ -289,6 +309,49 @@ public class PerformanceThread implements Runnable {
 
             op.addAndGet(target.repeatTimes);
         }
+    }
+
+    /**
+     * 将返回对象转换为String。支持 byte[]、List、Set、Map 等类型：
+     * - byte[] 按 UTF-8 解码为字符串；
+     * - List/Set 等集合类型递归转换为字符串后拼接，格式为 [e1, e2, ...]；
+     * - Map 类型格式为 {k1=v1, k2=v2, ...}；
+     * - 其他类型调用 toString()。
+     */
+    private String getReturnValueAsString(Object returnObj) {
+        if (returnObj == null) {
+            return null;
+        }
+        if (returnObj instanceof byte[]) {
+            return BuilderFactory.STRING.build(returnObj);
+        }
+        if (returnObj instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) returnObj;
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!first) sb.append(", ");
+                first = false;
+                sb.append(getReturnValueAsString(entry.getKey()));
+                sb.append("=");
+                sb.append(getReturnValueAsString(entry.getValue()));
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+        if (returnObj instanceof Collection) {
+            Collection<?> coll = (Collection<?>) returnObj;
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            for (Object item : coll) {
+                if (!first) sb.append(", ");
+                first = false;
+                sb.append(getReturnValueAsString(item));
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+        return returnObj.toString();
     }
 
 

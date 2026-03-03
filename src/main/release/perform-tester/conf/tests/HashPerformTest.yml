@@ -27,8 +27,9 @@ tests:
       ############### 测试命令相关配置 ################
       # 下面执行命令中的每个命令行可使用的属性:
       #  line：是带参数的命令行，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} 为相应的数据值,  其中 ${VALUE}==${VALUE1}
-      #  returnAssert： 是执行这个命令时，返回值的校验，如果不等于这个值就会认为执行失败。“#{NOT_EMPTY}”表示不为空就校验通过。
-      #  returnType: 指定返回值的类型，默认是STRING类型，可选值有 STRING, LONG
+      #  returnType: 指定返回值的类型，默认是STRING类型，可选值有 STRING, LONG。如果返回值是其他类型如 List, Set, Map 等集合类型，会转换为String并按STRING类型进行比较。
+      #  returnAssert： 是执行这个命令时，返回值的校验，如果不等于这个值就会认为执行失败，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} ${VALUE3} ${VALUE4} ${VALUE5} 为相应的数据值。
+      #               "#{NOT_EMPTY}" 表示不为空就校验通过；"#{EMPTY}" 表示为空（String类型空串或null，Long类型为0或null）就校验通过。
       #  repeatTimes： 命令重复执行的次数，默认是1次。
       #  sleep: 执行等待的时长（单位是毫秒）。该属性是排它的，如果配置了sleep属性其他属性将被忽略。
       # 逐个子项循环执行的命令，如果是String类型相当于子项只有一个，set, zset, list, hash这些类型都是集合内子项的循环。

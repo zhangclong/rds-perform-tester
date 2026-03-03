@@ -20,6 +20,7 @@ public class CommandHelper {
     public static final int RETURN_TYPE_LONG = 2;
 
     public static final int COMPARE_NOT_EMPTY = 1; // 非空
+    public static final int COMPARE_EMPTY = 2; // 为空
     public static final int COMPARE_EQ = 6; // ==
 
     private static final int MAX_VALUES = 5; // 支持的最大值个数
@@ -90,76 +91,22 @@ public class CommandHelper {
                 target.compareMethod = CommandHelper.COMPARE_NOT_EMPTY;
                 target.compareValue = null;
             }
-            else if(returnAssert.equals("${VALUE}") || returnAssert.equals("${VALUE1}")) {
-                target.compareMethod = CommandHelper.COMPARE_EQ;
-                if(target.returnType == RETURN_TYPE_LONG) {
-                    try {
-                        target.compareValue = Long.parseLong(values[0]);
-                    } catch (NumberFormatException ex) {
-                        throw new IllegalArgumentException("Return assert value is not a valid long: " + values[0]);
-                    }
-                } else {
-                    target.compareValue = values[0];
-                }
-            }
-            else if(returnAssert.equals("${VALUE2}")) {
-                target.compareMethod = CommandHelper.COMPARE_EQ;
-                if(target.returnType == RETURN_TYPE_LONG) {
-                    try {
-                        target.compareValue = Long.parseLong(values[1]);
-                    } catch (NumberFormatException ex) {
-                        throw new IllegalArgumentException("Return assert value is not a valid long: " + values[1]);
-                    }
-                } else {
-                    target.compareValue = values[1];
-                }
-            }
-            else if(returnAssert.equals("${VALUE3}")) {
-                target.compareMethod = CommandHelper.COMPARE_EQ;
-                if(target.returnType == RETURN_TYPE_LONG) {
-                    try {
-                        target.compareValue = Long.parseLong(values[2]);
-                    } catch (NumberFormatException ex) {
-                        throw new IllegalArgumentException("Return assert value is not a valid long: " + values[2]);
-                    }
-                } else {
-                    target.compareValue = values[2];
-                }
-            }
-            else if(returnAssert.equals("${VALUE4}")) {
-                target.compareMethod = CommandHelper.COMPARE_EQ;
-                if(target.returnType == RETURN_TYPE_LONG) {
-                    try {
-                        target.compareValue = Long.parseLong(values[3]);
-                    } catch (NumberFormatException ex) {
-                        throw new IllegalArgumentException("Return assert value is not a valid long: " + values[3]);
-                    }
-                } else {
-                    target.compareValue = values[3];
-                }
-            }
-            else if(returnAssert.equals("${VALUE5}")) {
-                target.compareMethod = CommandHelper.COMPARE_EQ;
-                if(target.returnType == RETURN_TYPE_LONG) {
-                    try {
-                        target.compareValue = Long.parseLong(values[4]);
-                    } catch (NumberFormatException ex) {
-                        throw new IllegalArgumentException("Return assert value is not a valid long: " + values[4]);
-                    }
-                } else {
-                    target.compareValue = values[4];
-                }
+            else if(returnAssert.equals("#{EMPTY}")) {
+                target.compareMethod = CommandHelper.COMPARE_EMPTY;
+                target.compareValue = null;
             }
             else {
+                // 对 returnAssert 进行模板变量替换，支持 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} 等占位符
+                String evaluatedAssert = evaluateTemplate(returnAssert, composeContext(key, values));
                 target.compareMethod = CommandHelper.COMPARE_EQ;
                 if(target.returnType == RETURN_TYPE_LONG) {
                     try {
-                        target.compareValue = Long.parseLong(returnAssert);
+                        target.compareValue = Long.parseLong(evaluatedAssert);
                     } catch (NumberFormatException ex) {
-                        throw new IllegalArgumentException("Return assert value is not a valid long: " + returnAssert);
+                        throw new IllegalArgumentException("Return assert value is not a valid long: " + evaluatedAssert);
                     }
                 } else {
-                    target.compareValue = returnAssert;
+                    target.compareValue = evaluatedAssert;
                 }
             }
         }
