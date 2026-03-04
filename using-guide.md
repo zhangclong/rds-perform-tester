@@ -126,7 +126,9 @@ tests:
       ############### 测试命令相关配置 ################
       # 下面执行命令中的每个命令行可使用的属性:
       #  line：是带参数的命令行，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} 为相应的数据值,  其中 ${VALUE}==${VALUE1}
-      #  returnAssert： 是执行这个命令时，返回值的校验，如果不等于这个值就会认为执行失败。“NOT_EMPTY”表示不为空就校验通过。
+      #  returnType: 指定返回值的类型，默认是STRING类型，可选值有 STRING, LONG。如果返回值是其他类型如 List, Set, Map 等集合类型，会转换为String并按STRING类型进行比较。
+      #  returnAssert： 是执行这个命令时，返回值的校验，如果不等于这个值就会认为执行失败，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} ${VALUE3} ${VALUE4} ${VALUE5} 为相应的数据值。
+      #               "#{NOT_EMPTY}" 表示不为空就校验通过；"#{EMPTY}" 表示为空（String类型空串或null，Long类型为0或null）就校验通过。
       #  repeatTimes： 命令重复执行的次数，默认是1次。
       #  sleep: 执行等待的时长（单位是毫秒）。该属性是排它的，如果配置了sleep属性其他属性将被忽略。
       # 逐个子项循环执行的命令，如果是String类型相当于子项只有一个，set, zset, list, hash这些类型都是集合内子项的循环。
@@ -147,7 +149,7 @@ tests:
 2. `dataFileName`是引用数据文件配置的名称，必须与前面配置的名称一致。如果数据文件不存在，工具会自动生成数据文件。
 3. 两个测试用例可以引用同一个数据文件，通过这种方式可以做数据关联性测试，如：前一个用例写入数据，后一个用例读取验证数据。
 4. `connectionName` 是引用连接配置的名称，必须与前面配置的名称一致，同一个连接配置可以被多个测试用例引用，但注意执行每个测试用例时都会重新连接。
-5. `commands`定义了测试过程中要执行的命令，可以按需修改或增加命令。命令中可以使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` 这些变量，运行时会自动替换为相应的数据值。
+5. `commands`定义了测试过程中要执行的命令，可以按需修改或增加命令。`line`命令中可以使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` 这些变量，`returnAssert`中还支持 `${VALUE3}` `${VALUE4}` `${VALUE5}` 及 `${KEY}` 占位符，运行时会自动替换为相应的数据值。`returnAssert`另外改用 `"#{NOT_EMPTY}"` 表示不为空即通过，`"#{EMPTY}"` 表示为空（String类型空串或null，Long类型为0或null）即通过。`returnType`指定 STRING 或 LONG，当命令返回 List、Set、Map 等集合类型时，会自动转换为String再按STRING类型比较。
 6. 如果想不执行某个测试用例，可以加入 `disable: true` 属性来禁用该测试用例。
 
 #### 5. 运行测试
