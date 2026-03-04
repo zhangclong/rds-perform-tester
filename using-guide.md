@@ -170,7 +170,11 @@ tests:
       - Map 类型格式为 {k1=v1, k2=v2, ...}；
       - 其他类型调用 toString()。
    - `returnAssert` 属性是执行命令后的返回值校验，如果不写此属性表示不做校验，支持属性变量。比如：配置 `returnAssert: "${VALUE}"`，在执行时会自动替换为 `returnAssert: "v00000001"` 来校验命令执行的返回值是否等于 "v00000001"。另外可用 `"#{NOT_EMPTY}"` 表示不为空即通过，用`"#{EMPTY}"` 表示为空（String类型空串或null，Long类型为0或null）即通过。
-   - `returnAssertEvl` 属性是执行命令后的返回值的表达式校验， 和 `returnAssert` 类似但支持更复杂的表达式校验，它和`returnAssert`属性不能同时出现，表达式中可以使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` `${RETURNS}` 这些变量来代表相应的数据值。比如：配置 `returnAssertEvl: "${RETURNS}.startsWith('v000')"`，在执行时会自动替换为 `returnAssertEvl: "v00000001.startsWith('v000')"` 来校验命令执行的返回值是否以 "v000" 开头。
+   - `returnAssertEvl` 属性是执行命令后的返回值表达式校验，采用 Aviator 表达式语法。它和 `returnAssert` 不能同时出现，不建议在大数量和测试性能时使用，表达式中仍可使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` `${RETURNS}` 这些变量代表运行时数据（其中 `${RETURNS}` 仅用于 `returnAssertEvl`）。常见写法示例如下：
+     - 相等对比：`"${RETURNS} == ${VALUE}"`（例如返回值与当前 value 一致）
+     - 包含某字符串：`"${RETURNS}.contains('ok')"`（例如返回值中包含 "ok"）
+     - 以某字符串开头：`"${RETURNS}.startsWith('v000')"`（例如返回值前缀为 "v000"）
+     - 数字大小对比：`"${RETURNS} > 100"`、`"${RETURNS} < 1000"`（常用于 `returnType: "LONG"` 的场景）
     
 #### 5. 运行测试
 在命令行窗口进入到项目根目录，执行以下命令启动测试runtest.sh(Windows系统执行runtest.bat)：
