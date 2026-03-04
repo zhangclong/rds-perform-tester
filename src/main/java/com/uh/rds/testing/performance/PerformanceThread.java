@@ -6,6 +6,8 @@ import com.uh.rds.testing.conn.Endpoint;
 import com.uh.rds.testing.logger.TestLoggerFactory;
 import com.uh.rds.testing.utils.Pxx;
 import com.uh.rds.testing.utils.RdsConnectionUtils;
+import com.googlecode.aviator.AviatorEvaluator;
+import com.googlecode.aviator.AviatorEvaluatorInstance;
 import org.slf4j.Logger;
 import redis.clients.jedis.BuilderFactory;
 import redis.clients.jedis.Jedis;
@@ -19,6 +21,9 @@ import static com.uh.rds.testing.performance.CommandHelper.toCommandLine;
 public class PerformanceThread implements Runnable {
     private Logger logger;
     private Logger commandLogger;
+
+    /** 共享的 Aviator 实例（线程安全），用于 returnAssertEvl 表达式求值 */
+    private static final AviatorEvaluatorInstance AVIATOR = AviatorEvaluator.getInstance();
 
     private final PerformanceConfig config;
     private final Pxx pxx;
@@ -305,9 +310,52 @@ public class PerformanceThread implements Runnable {
                         commandLogger.error("Command:{}, Unknown return type: {}", toCommandLine(target.commandArgs), target.returnType);
                     }
                 }
+                else if(target.compareMethod == CommandHelper.COMPARE_EVL) {
+                    evaluateAviatorAssert(target, returnObj);
+                }
             }
 
             op.addAndGet(target.repeatTimes);
+        }
+    }
+
+    /**
+     * 使用Aviator表达式对命令返回值进行断言校验。
+     * 将 RETURNS 绑定为实际返回值，KEY/VALUE/VALUE1/VALUE2 绑定为命令执行时的数据变量。
+     * 表达式求值结果为 true 表示断言通过，否则记录失败。
+     */
+    private void evaluateAviatorAssert(CommandTarget target, Object returnObj) {
+        Object returns;
+        if (target.returnType == CommandHelper.RETURN_TYPE_LONG) {
+            returns = BuilderFactory.LONG.build(returnObj);
+        } else {
+            returns = getReturnValueAsString(returnObj);
+        }
+
+        Map<String, Object> env = new HashMap<>();
+        env.put("RETURNS", returns);
+
+        String key = target.evlKey;
+        String[] values = target.evlValues != null ? target.evlValues : CommandHelper.EMPTY_VALUES;
+        env.put("KEY", key);
+        for (int i = 0; i < values.length; i++) {
+            if (i == 0) {
+                env.put("VALUE", values[i]);
+            }
+            env.put("VALUE" + (i + 1), values[i]);
+        }
+
+        try {
+            Object result = AVIATOR.execute(target.assertEvlExpr, env);
+            if (!Boolean.TRUE.equals(result)) {
+                assertFailed++;
+                commandLogger.error("Command:{}, return '{}', EVL assert failed, expr: [{}]",
+                        toCommandLine(target.commandArgs), returns, target.assertEvlExpr);
+            }
+        } catch (Exception e) {
+            assertFailed++;
+            commandLogger.error("Command:{}, return '{}', EVL assert error, expr: [{}], error: {}",
+                    toCommandLine(target.commandArgs), returns, target.assertEvlExpr, e.getMessage());
         }
     }
 

@@ -7,6 +7,9 @@ public class CommandConfig{
     // 执行这个命令时，返回值的校验
     private String returnAssert;
 
+    // 执行这个命令时，返回值的Aviator表达式校验（与returnAssert互斥）
+    private String returnAssertEvl;
+
     // 重复执行次数，默认1次
     private int repeatTimes = 1;
 
@@ -31,6 +34,14 @@ public class CommandConfig{
 
     public void setReturnAssert(String returnAssert) {
         this.returnAssert = returnAssert.trim();
+    }
+
+    public String getReturnAssertEvl() {
+        return returnAssertEvl;
+    }
+
+    public void setReturnAssertEvl(String returnAssertEvl) {
+        this.returnAssertEvl = returnAssertEvl.trim();
     }
 
     public int getRepeatTimes() {
@@ -62,8 +73,9 @@ public class CommandConfig{
      * @return
      */
     public String toShort() {
-        return (sleep > 0) ? "Command[sleep=" + sleep + "]" : "Command[" +
-                "'" + line + "' assert='" + returnAssert + "']";
+        if (sleep > 0) return "Command[sleep=" + sleep + "]";
+        String assertInfo = returnAssertEvl != null ? returnAssertEvl : returnAssert;
+        return "Command['" + line + "' assert='" + assertInfo + "']";
     }
 
 
@@ -72,6 +84,7 @@ public class CommandConfig{
         return "CommandConfig{" +
                 "line='" + line + '\'' +
                 ", returnAssert='" + returnAssert + '\'' +
+                ", returnAssertEvl='" + returnAssertEvl + '\'' +
                 ", repeatTimes=" + repeatTimes +
                 ", returnType='" + returnType + '\'' +
                 ", sleep=" + sleep +

@@ -11,7 +11,7 @@ import com.uh.rds.testing.config.CommandConfig;
  */
 public class CommandTarget {
 
-    // 对返回结果进行比较，比较的方法： 0 不比较, 1 非空, 2 >, 3 <, 4 >=, 5 <=, 6 ==, 7 !=
+    // 对返回结果进行比较，比较的方法： 0 不比较, 1 非空(NOT_EMPTY), 2 为空(EMPTY), 6 相等(EQ), 7 Aviator表达式(EVL)
     int compareMethod = 0; //  默认不比较
 
     CommandArguments commandArgs;
@@ -25,6 +25,11 @@ public class CommandTarget {
     int returnType; // 返回值类型 1 String, 2 Long
 
     int repeatTimes; // 重复执行次数，默认1次
+
+    // returnAssertEvl 相关字段
+    String assertEvlExpr; // 已转换的Aviator表达式（${VAR} 已替换为 VAR）
+    String evlKey;        // 用于Aviator变量绑定的KEY值
+    String[] evlValues;   // 用于Aviator变量绑定的VALUES值
 
     public CommandTarget() {
     }
