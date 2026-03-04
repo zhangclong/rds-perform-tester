@@ -2,12 +2,13 @@ package com.uh.rds.testing.performance;
 
 import com.uh.rds.testing.config.CommandConfig;
 import com.uh.rds.testing.utils.StringUtils;
-import com.uh.rds.testing.utils.VelocityEvaluator;
-import org.apache.velocity.VelocityContext;
 import redis.clients.jedis.CommandArguments;
 import redis.clients.jedis.args.Rawable;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.uh.rds.testing.utils.RdsConnectionUtils.buildCommandArgs;
@@ -40,9 +41,7 @@ public class CommandHelper {
 
     public static final String[] EMPTY_VALUES = {};
 
-    private final VelocityEvaluator evaluator = new VelocityEvaluator();
-
-    private VelocityContext context;
+    private Map<String, String> templateContext;
 
     public static String toCommandLine(CommandArguments commandArgs) {
         StringBuilder sb = new StringBuilder();
@@ -145,7 +144,7 @@ public class CommandHelper {
         return target;
     }
 
-    private VelocityContext composeContext(String key, String[] values) {
+    private Map<String, String> composeContext(String key, String[] values) {
         if(values == null) {
             values = EMPTY_VALUES;
         }
@@ -155,23 +154,52 @@ public class CommandHelper {
             throw new IllegalArgumentException("Too many values, max supported is " + MAX_VALUES);
         }
 
-        if(context == null) {
-            context = new VelocityContext();
+        if(templateContext == null) {
+            templateContext = new HashMap<>();
         }
+        templateContext.clear();
 
-        context.put("KEY", key);
+        templateContext.put("KEY", key);
         for(int i = 0; i < values.length; i++) {
             if(i == 0) {
-                context.put("VALUE", values[i]);
+                templateContext.put("VALUE", values[i]);
             }
-            context.put("VALUE" + (i+1), values[i]);
+            templateContext.put("VALUE" + (i+1), values[i]);
         }
 
-        return context;
+        return templateContext;
     }
 
-    private String evaluateTemplate(String template, VelocityContext context) {
-        return evaluator.evaluatedTemplate(template, context);
+    /**
+     * 对模板字符串进行变量替换。
+     * 支持的占位符格式为 ${VAR}，其中 VAR 为变量名（字母开头，由字母数字组成）。
+     *
+     * @param template 模板字符串，包含 ${VAR} 形式的占位符
+     * @param context 变量映射表，key 为变量名，value 为替换值
+     * @return 替换后的字符串
+     */
+    private String evaluateTemplate(String template, Map<String, String> context) {
+        if (template == null) {
+            return null;
+        }
+
+        Matcher matcher = TEMPLATE_VAR_PATTERN.matcher(template);
+        StringBuffer result = new StringBuffer();
+
+        while (matcher.find()) {
+            String varName = matcher.group(1); // 提取变量名（不含 ${ 和 }）
+            String replacement = context.get(varName);
+            if (replacement != null) {
+                // 需要转义 $ 和 \ 以避免 appendReplacement 将其解释为特殊字符
+                matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
+            } else {
+                // 变量未定义时保留原占位符
+                matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
+            }
+        }
+        matcher.appendTail(result);
+
+        return result.toString();
     }
 
     private static boolean isPrintableUtf8(byte[] data) {
