@@ -29,5 +29,5 @@
 
 ## 文档与说明
 - 与使用方式相关的改动，需同步 `README.md` 或 `using-guide.md` 中对应段落。
-- 对 `src/main/release/perform-tester/conf/**/*.yml` 的任何修改或补充，都必须同步更新 `using-guide.md`；如果该改动也影响到 `README.md` 的内容，则也需要同步修改 `README.md`。
+- 对 `src/main/release/perform-tester/conf/**/*.yml` 的任何修改或补充，检查 `using-guide.md` 中是否有对应描述，如果有要同步更新；如果该改动也影响到 `README.md` 的内容，则也需要同步修改 `README.md`。
 - 文档术语保持一致：`connections`、`dataFiles`、`tests.id`、`commands`、`loopCount`、`threads`、`threadClients`。

@@ -72,6 +72,7 @@ connections:
 ```yaml
 dataFiles:
   string-data:
+    
     # 数据类型, 可选取值 string, set, zset, list, hash, stream
     dataType: "string"
     # 测试中产生的数据行数
@@ -97,12 +98,18 @@ dataFiles:
 注意,这里‘string-data’和‘hash-data’是数据文件配置的名称，可以自定义。后续在测试用例配置文件中会引用这个名称。
 
 #### 4. 配置测试用例
-测试用例文件放置在`conf/perform/`目录下以`*Test.yml`或`*Test.yaml`为文件名结尾的文件。 这里以 `conf/perform/StringPerformTest.yml`为示例说明配置项目和用途：
+测试用例文件放置在`conf/perform/`目录下以`*Test.yml`或`*Test.yaml`为文件名结尾的文件。 一般每个测试用例文件定义一个测试用例，
+当然也可以在一个文件中定义多个测试用例。测试用例的配置内容包括：要使用的连接配置、数据文件配置、执行命令、读写比例等信息。
+
+##### 样例和说明
+这里以 `conf/perform/StringPerformTest.yml`为示例说明配置项目和用途：
 ```yaml
 tests:
   - id: "1.StringPerformanceTest"
     description: "验证Hash数据类型，HSET后验证HSCAN命令是否正常执行，以及执行效率"
     configs:
+      # 是否禁用本测试
+      disable: false
       # 指定数据文件名称，必须在配置中的dataFiles中有相应的数据文件配置
       dataFileName: "string-data"
       # 指定连接的名称，必须在配置中的connections中有相应的连接配置
@@ -124,18 +131,14 @@ tests:
       # 是否运行时解析命令行中的变量表达式，运行时解析会耗用较少的内存但会影响运行效率增大CPU使用，默认是false
       runtimeParse: true
       ############### 测试命令相关配置 ################
-      # 下面执行命令中的每个命令行可使用的属性:
-      #  line：是带参数的命令行，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} 为相应的数据值,  其中 ${VALUE}==${VALUE1}
-      #  returnType: 指定返回值的类型，默认是STRING类型，可选值有 STRING, LONG。如果返回值是其他类型如 List, Set, Map 等集合类型，会转换为String并按STRING类型进行比较。
-      #  returnAssert： 是执行这个命令时，返回值的校验，如果不等于这个值就会认为执行失败，运行时会自动替换 ${KEY} ${VALUE} ${VALUE1} ${VALUE2} ${VALUE3} ${VALUE4} ${VALUE5} 为相应的数据值。
-      #               "#{NOT_EMPTY}" 表示不为空就校验通过；"#{EMPTY}" 表示为空（String类型空串或null，Long类型为0或null）就校验通过。
-      #  repeatTimes： 命令重复执行的次数，默认是1次。
-      #  sleep: 执行等待的时长（单位是毫秒）。该属性是排它的，如果配置了sleep属性其他属性将被忽略。
-      # 逐个子项循环执行的命令，如果是String类型相当于子项只有一个，set, zset, list, hash这些类型都是集合内子项的循环。
       commands: [
+        # 执行 SET ${KEY} ${VALUE} 命令，并校验返回值是否等于 "OK"。
         {line: "SET ${KEY} ${VALUE}", returnAssert: "OK", returnType: "STRING"},
         # {sleep: 100},  # 执行等待，单位是毫秒
+        # 执行 GET ${KEY} 命令，并校验返回值是否等于 ${VALUE}，并重复执行9次。
         {line: "GET ${KEY}", returnAssert: "${VALUE}", returnType: "STRING", repeatTimes: 9}
+        # 执行 GET ${KEY} 命令，并校验返回值以 "v000" 开头。
+        # {line: "GET ${KEY}", returnAssertEvl: "${RETURNS}.startsWith('v000')", returnType: "STRING"}
       ]
 
       # 表示按key逐一循环执行，并在commands定义的子项循环前执行。
@@ -144,14 +147,31 @@ tests:
       # 表示按key逐一循环执行，并在commands定义的子项循环后执行。
       keyAfterCommands: [ ]
 ```
-注意：
+##### 配置内容说明
 1. 这里的`id`是测试用例的唯一标识，测试执行会按此属性的字母顺序正序来执行。
-2. `dataFileName`是引用数据文件配置的名称，必须与前面配置的名称一致。如果数据文件不存在，工具会自动生成数据文件。
-3. 两个测试用例可以引用同一个数据文件，通过这种方式可以做数据关联性测试，如：前一个用例写入数据，后一个用例读取验证数据。
-4. `connectionName` 是引用连接配置的名称，必须与前面配置的名称一致，同一个连接配置可以被多个测试用例引用，但注意执行每个测试用例时都会重新连接。
-5. `commands`定义了测试过程中要执行的命令，可以按需修改或增加命令。`line`命令中可以使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` 这些变量，`returnAssert`中还支持 `${VALUE3}` `${VALUE4}` `${VALUE5}` 及 `${KEY}` 占位符，运行时会自动替换为相应的数据值。`returnAssert`另外改用 `"#{NOT_EMPTY}"` 表示不为空即通过，`"#{EMPTY}"` 表示为空（String类型空串或null，Long类型为0或null）即通过。`returnType`指定 STRING 或 LONG，当命令返回 List、Set、Map 等集合类型时，会自动转换为String再按STRING类型比较。
-6. 如果想不执行某个测试用例，可以加入 `disable: true` 属性来禁用该测试用例。
-
+2. 如果想不执行某个测试用例，可以加入 `disable: true` 属性来禁用该测试用例。
+3. `dataFileName`是引用数据文件配置的名称，必须与前面配置的名称一致。如果数据文件不存在，工具会自动生成数据文件。
+4. 两个测试用例可以引用同一个数据文件，通过这种方式可以做数据关联性测试，如：前一个用例写入数据，后一个用例读取验证数据。
+5. `connectionName` 是引用连接配置的名称，必须与前面配置的名称一致，同一个连接配置可以被多个测试用例引用，但注意执行每个测试用例时都会重新连接。
+6. `commands`定义了测试过程中要执行的命令，该属性是数组格式，其中的每个数组元素{}就是一个命令行，可以按需修改或增加多个命令行。下面对命令行就行说明：
+   - 命令行分两种，一种是等待命令行，即配置了`sleep`属性的命令行，表示执行等待；另一种是执行命令行，配置了`line`属性的命令行，表示要执行的命令。
+   - 属性变量，是指在某些属性中可以使用特定的符号指代运行中的特定值。在`line`，`returnAssert`，`returnAssertEvl`三个属性中可以使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` `${RETURNS}` 这些变量，
+     运行时会自动替换为相应的数据值。`${KEY}`表示当前执行的key值，`${VALUE}`表示当前执行的value值，`${VALUE1}` `${VALUE2}`等表示当前执行的value值中的子值，如：hash类型数据的field和value，list类型数据的index和value等。
+     `${RETURNS}`表示当前执行命令的返回值，只可在 `returnAssertEvl` 中使用这个变量来对返回值进行更复杂的表达式校验。
+     例如：在`line`命令中配置 `SET ${KEY} ${VALUE}`，在执行时会自动替换为 `SET s00000001 v00000001` 这样的命令行来执行。
+   - `sleep`属性表示执行等待的时长，单位是毫秒。该属性是排它的，如果配置了sleep属性其他属性将被忽略。
+     例如：配置 `{sleep: 100}`，表示执行等待100毫秒。
+   - `line` 属性是要执行的命令文本，支持属性变量，运行时会自动替换为相应的数据值。
+   - `repeatTimes`属性表示命令重复执行的次数，默认是1次。比如：配置 `repeatTimes: 9`，表示这个命令会被执行9次。
+   - `returnType`用于指定命令返回的数据类型。 两个选项 "STRING" 或 "LONG"。注意返回类型不是String或Long时，会自动转换为String再按STRING类型比较（即`returnAssert`或`returnAssertEvl`中的比较判断)。
+      目前将返回对象转换为String，支持 byte[]、List、Set、Map 等类型：
+      - byte[] 按 UTF-8 解码为字符串；
+      - List/Set 等集合类型递归转换为字符串后拼接，格式为 [e1, e2, ...]；
+      - Map 类型格式为 {k1=v1, k2=v2, ...}；
+      - 其他类型调用 toString()。
+   - `returnAssert` 属性是执行命令后的返回值校验，如果不写此属性表示不做校验，支持属性变量。比如：配置 `returnAssert: "${VALUE}"`，在执行时会自动替换为 `returnAssert: "v00000001"` 来校验命令执行的返回值是否等于 "v00000001"。另外可用 `"#{NOT_EMPTY}"` 表示不为空即通过，用`"#{EMPTY}"` 表示为空（String类型空串或null，Long类型为0或null）即通过。
+   - `returnAssertEvl` 属性是执行命令后的返回值的表达式校验， 和 `returnAssert` 类似但支持更复杂的表达式校验，它和`returnAssert`属性不能同时出现，表达式中可以使用 `${KEY}` `${VALUE}` `${VALUE1}` `${VALUE2}` `${RETURNS}` 这些变量来代表相应的数据值。比如：配置 `returnAssertEvl: "${RETURNS}.startsWith('v000')"`，在执行时会自动替换为 `returnAssertEvl: "v00000001.startsWith('v000')"` 来校验命令执行的返回值是否以 "v000" 开头。
+    
 #### 5. 运行测试
 在命令行窗口进入到项目根目录，执行以下命令启动测试runtest.sh(Windows系统执行runtest.bat)：
 ```bash

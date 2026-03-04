@@ -32,7 +32,5 @@
 
 ## 变更边界与安全准则
 - 修改程序涉及配置项时，必须同步维护 `src/main/release/perform-tester/conf/` 中配置注释，保证注释说明完整且与实际行为一致。
-- 对 `src/main/release/perform-tester/conf/**/*.yml` 的任何修改或补充，都必须同步更新 `using-guide.md`；如果该改动也影响到 `README.md` 的内容，则也需要同步修改 `README.md`。
 - 不要随意改动默认示例配置语义（尤其是 cluster 的 `shards` 与 `endpoints` 对应关系）。
-- 不要删除用户已有测试用例；新增用例应保持可独立启停（可用 `disable: true` 控制）。
 - 不要引入与压测无关的依赖或框架；保持工具轻量、可脚本化运行。
