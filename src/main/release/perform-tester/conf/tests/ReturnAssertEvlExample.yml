@@ -1,0 +1,56 @@
+tests:
+  - id: "3.ReturnAssertEvlExample"
+    description: "演示 returnAssertEvl 的用法：使用 Aviator 表达式对命令返回值进行灵活校验"
+    configs:
+      # 是否禁用本测试
+      disable: true
+      # 指定数据文件名称，必须在配置中的dataFiles中有相应的数据文件配置
+      dataFileName: "string-data"
+      # 指定连接的名称，必须在配置中的connections中有相应的连接配置
+      connectionName: "localSingle"
+      # 是否在测试前先清空DB
+      flushBefore: true
+      # 是否在测试后清理测试数据
+      cleanAfter: true
+      # 是否从从节点读取数据
+      readFromSlave: false
+      # 测试并发线程数
+      threads: 1
+      # 每个线程中的客户端数
+      threadClients: 1
+      # 循环执行次数
+      loopCount: 1
+      # 是否运行时解析命令行中的变量表达式
+      runtimeParse: false
+      ############### 测试命令相关配置 ################
+      commands: [
+        # SET 后用 returnAssert 校验返回值是否为 "OK"（直接值比较，不用表达式）
+        {line: "SET ${KEY} ${VALUE}", returnAssert: "OK", returnType: "STRING"},
+
+        # GET 后用 returnAssertEvl 表达式校验返回值是否等于 VALUE（表达式等值比较）
+        # 等价于：returnAssert: "${VALUE}"，但写法更灵活，支持复杂表达式
+        {line: "GET ${KEY}", returnAssertEvl: "${RETURNS} == ${VALUE}", returnType: "STRING"},
+
+        # GET 后用 returnAssertEvl 表达式校验返回值是否以 "v" 开头
+        # 文档示例写法：${RETURNS}.startsWith('v')，运行时自动转换为 Aviator 表达式
+        {line: "GET ${KEY}", returnAssertEvl: "${RETURNS}.startsWith('v')", returnType: "STRING"},
+
+        # GET 后用 returnAssertEvl 表达式校验返回值是否包含某子串
+        {line: "GET ${KEY}", returnAssertEvl: "${RETURNS}.contains('000')", returnType: "STRING"},
+
+        # 用 INCR 命令后校验返回值（Long类型）大于 0
+        # ${RETURNS} 为 LONG 类型时，可直接做数值大小比较
+        {line: "INCR counter_${KEY}", returnAssertEvl: "${RETURNS} > 0", returnType: "LONG"},
+
+        # 用 INCR 命令后校验返回值（Long类型）小于某阈值
+        {line: "INCR counter_${KEY}", returnAssertEvl: "${RETURNS} < 1000", returnType: "LONG"},
+      ]
+
+      # 按key逐一执行，执行commands前先执行
+      keyBeforeCommands: []
+
+      # 按key逐一执行，执行commands后执行
+      keyAfterCommands: [
+        # 清理本次测试产生的 counter key
+        {line: "DEL counter_${KEY}", returnType: "LONG"}
+      ]

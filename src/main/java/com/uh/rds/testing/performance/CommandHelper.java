@@ -8,6 +8,7 @@ import redis.clients.jedis.CommandArguments;
 import redis.clients.jedis.args.Rawable;
 
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 import static com.uh.rds.testing.utils.RdsConnectionUtils.buildCommandArgs;
 import static com.uh.rds.testing.utils.RdsConnectionUtils.isWriteCommand;
@@ -22,8 +23,20 @@ public class CommandHelper {
     public static final int COMPARE_NOT_EMPTY = 1; // 非空
     public static final int COMPARE_EMPTY = 2; // 为空
     public static final int COMPARE_EQ = 6; // ==
+    public static final int COMPARE_EVL = 7; // Aviator表达式
 
     private static final int MAX_VALUES = 5; // 支持的最大值个数
+
+    /** 匹配 ${VAR} 占位符，VAR 为字母数字组成的标识符 */
+    private static final Pattern TEMPLATE_VAR_PATTERN = Pattern.compile("\\$\\{([A-Za-z][A-Za-z0-9]*)\\}");
+
+    /**
+     * 将 Java 风格的字符串方法调用（如 VAR.contains(...)）转换为 Aviator 内置函数形式
+     * （如 string.contains(VAR, ...)），以支持 using-guide.md 中记录的表达式写法。
+     * 支持转换的方法：contains、startsWith、endsWith。
+     */
+    private static final Pattern STRING_METHOD_PATTERN =
+            Pattern.compile("(\\w+)\\.(contains|startsWith|endsWith)\\((.+?)\\)");
 
     public static final String[] EMPTY_VALUES = {};
 
@@ -86,6 +99,13 @@ public class CommandHelper {
         }
 
         String returnAssert = commandConfig.getReturnAssert();
+        String returnAssertEvl = commandConfig.getReturnAssertEvl();
+
+        if (StringUtils.isNotEmpty(returnAssert) && StringUtils.isNotEmpty(returnAssertEvl)) {
+            throw new IllegalArgumentException(
+                "returnAssert and returnAssertEvl cannot both be set on the same command: " + commandConfig.getLine());
+        }
+
         if (StringUtils.isNotEmpty(returnAssert)) {
             if(returnAssert.equals("#{NOT_EMPTY}")) {
                 target.compareMethod = CommandHelper.COMPARE_NOT_EMPTY;
@@ -109,6 +129,17 @@ public class CommandHelper {
                     target.compareValue = evaluatedAssert;
                 }
             }
+        }
+
+        if (StringUtils.isNotEmpty(returnAssertEvl)) {
+            // 将 ${VAR} 形式的占位符转换为 Aviator 变量名（去掉 ${ 和 }）
+            String aviatorExpr = TEMPLATE_VAR_PATTERN.matcher(returnAssertEvl).replaceAll("$1");
+            // 将 Java 风格方法调用（如 RETURNS.contains(...)）转换为 Aviator 内置函数形式
+            aviatorExpr = STRING_METHOD_PATTERN.matcher(aviatorExpr).replaceAll("string.$2($1, $3)");
+            target.assertEvlExpr = aviatorExpr;
+            target.evlKey = key;
+            target.evlValues = values;
+            target.compareMethod = COMPARE_EVL;
         }
 
         return target;
